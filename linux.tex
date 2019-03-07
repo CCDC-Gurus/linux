@@ -1,10 +1,10 @@
-\documentclass{article}
+ \documentclass{article}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{hyperref}
 
 \title{\textbf{Linux Hardening Guide}}
-\author{Kevin Schoonver}
+\author{Kevin Schoonver, Gavin Lewis}
 
 \lstset{basicstyle=\ttfamily,
     showstringspaces=false,
@@ -241,6 +241,8 @@ ps -eo pid,tty,user,args | less # List all process with the following format
 As a rule of thumb, programs should only be running in \textbf{/bin},
 \textbf{/opt}, \textbf{/sbin}, \textbf{/usr}.
 
+\section{Setup Splunk}
+
 \section{Setup NTP}
 NTP stands for Network Time Protocol and runs on port 123. It is used to synchronize computers on a network to UTC time within a few miliseconds. This should not be necessary during CCDC unless there is an inject requiring it, or there is extra time. Keeping similar times on each 
 machine will help with logging and is good practice to have done.
@@ -283,7 +285,7 @@ sudo service ntp restart
 The rest of the computers must be configured to use the correct NTP server.
 
 \subsubsection{Windows}
-Here is windows
+
 
 \subsubsection{Linux}
 All other machines will act as NTP clients. Use the correct package manager for your system.
