@@ -1,0 +1,361 @@
+\documentclass{article}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\title{\textbf{Linux Hardening Guide}}
+\author{Kevin Schoonver}
+
+\lstset{basicstyle=\ttfamily,
+    showstringspaces=false,
+    commentstyle=\color{red},
+    keywordstyle=\color{blue},
+    breaklines=true,
+}
+
+\begin{document}
+\maketitle
+
+\tableofcontents 
+
+\pagebreak 
+
+\section{Setup Up Package Repository}
+The majority of the linux boxes you will be faced with will not have the proper
+package repositories to collect packages. Whether it be a Debian, Ubuntu, or
+Fedora, if the version is no longer support by the maintainers of the distro,
+you will need to change the location in which the package manager will look for
+repositories. The distro probably supports some sort of archive in which the
+packages are kept, but no longer updated. 
+
+Please view the sections below to update the package repositories on various
+systems.
+
+\subsection{Ubuntu}
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+cp /etc/apt/sources.list /etc/apt/sources.list.bak # Backup sources list
+sudo sed -i -re "s/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g" /etc/apt/sources.list
+\end{lstlisting}
+
+\subsection{Debian}
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+cp /etc/apt/sources.list /etc/apt/sources.list.bak # Backup sources list
+sed "s/^deb/#deb/g" -i /etc/apt/sources.list  # Comment old sources
+
+cat << EOF >> /etc/apt/sources.list
+deb http://archive.debian.org/debian/ <version> main non-free contrib
+deb-src http://archive.debian.org/debian/ <version> main non-free contrib
+
+deb http://archive.debian.org/debian-security/ <version>/updates main non-free contrib
+deb-src http://archive.debian.org/debian-security/ <version>/updates main non-free contrib
+EOF
+\end{lstlisting}
+
+\subsection{CentOS}
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak # Backup sources
+cp /etc/yum.repos.d/CentOS-Vault.repo /etc/yum.repos.d/CentOS-Base.repo # Overwrite with Vault
+sed -i -re "s/enabled.=.1/enabled = 0/g" /etc/yum.repos.d/rpmforge.repo
+sed -i -re "s/enabled.=.0/enabled = 1/g" /etc/yum.repos.d/CentOS-Base.repo
+\end{lstlisting}
+
+
+\section{User Management}
+\subsection{Check .bashrc}
+Check the local \textbf{.bashrc} to ensure that any rogue commands are not run.
+If there is anything malicious in the \textbf{.bashrc}, remove and then reboot
+the machine.
+
+\subsection{Change Administrator Passwords}
+Utilize the password format excel document to change the account of any
+high-priviledge accounts on the machine. As well as important system users such
+as the mysql account.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+passwd <user> # Exclude <user> for changing current account
+\end{lstlisting}
+
+\subsection{Create New Administrator Account}
+Make a new administrator account which will be used for all future
+administrative tasks. Disable any other administrative accounts which can be
+used by the attackers to run commands as an elevated user.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+adduser # Creates a new user
+usermod -a -G sudo USERNAME # Add user to sudo
+su USERNAME # Change to the new uesr
+sudo ls # Test that the sudo works
+\end{lstlisting}
+
+\subsection{Check for suspicious accounts}
+Check the system groups to determine if certain suspicious accounts are in
+groups they should not be. To check all the groups, run the following command:
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+cat /etc/group | sort | less
+\end{lstlisting}
+
+Be sure to check the normal administrative groups such as \textbf{sudo},
+\textbf{wheel}, \textbf{admin}, and \textbf{root}. Make note of these suspicious
+accounts. 
+
+Next, check all of the users on the system using the following command:
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+less /etc/passwd
+\end{lstlisting}
+The users in this file are listed in chronological order based on when they were
+added so users later in the list are more likely to be rogue accounts. For
+service accounts such as \textbf{avahi}, they SHOULD NOT have a login shell nor
+a home directory such as \\
+\textbf{avahi}:x:107:114:Avahi mDNS daemon,,,:\textbf{/home/bob:/bin/bash} \\
+Daemons like Avahi should have their shells set to \textbf{/bin/false},
+\textbf{/sbin/nologin}, or \textbf{/usr/sbin/nologin}. 
+
+Lastly, check the \textbf{sudoers} file. This should only contain administrative
+accounts such as \textbf{root} or \textbf{admin}. Use the command:
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+less /etc/sudoers
+\end{lstlisting}
+
+\subsection{Disable / Update Administrator and System Accounts}
+Now that you have the new administrator account, you will no longer need any of
+the other administrative accounts such as \textbf{root} or
+\textbf{administrator}. To disable these accounts, use the following command:
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+usermod --lock --shell /usr/sbin/nologin --expiredate 1970-02-02 USERNAME
+\end{lstlisting}
+
+Look for system / services accounts which are used to run various services or
+applications. 
+
+\subsection{Check Sudoers Group}
+There should only be a couple of accounts in this group, the one you created and
+the \textbf{root} or \textbf{administrator} account that came with the box.
+
+
+\section{Check for suspicious files}
+Follows are methods used to find suspicious files and check valid files for changes.
+
+\subsection{/tmp/}
+Since the /tmp/ folder is utilized primiarly to store temporary data, malware or
+other malicious programs can mount sockets or hide other files in the /tmp/
+folder.  Use the following command to check for these files.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+ls -al /tmp/
+\end{lstlisting}
+
+If anything in this folder looks suspicious (or you just want to be safe), create
+an incident report about the file and run the following command.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+rm -rf /tmp/<file> # rm -rf /tmp/* to delete everything
+\end{lstlisting}
+
+\subsection{Root Kit Hunter}
+\textbf{rkhunter} is a tool used to find root kits on a machine.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo apt-get install rkhunter
+sudo rkhunter --version
+\end{lstlisting}
+
+Use this or the variant for your OS. The second line will make sure it is up to
+date. The current latest version is 1.4.0.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo rkhunter --update
+\end{lstlisting}
+
+This line will update the check files for \textbf{rkhunter}.
+
+\subsection{Installing Anti-Virus}
+Installing an Anti-Virus on your box will help immensely. They also typically end
+up as an inject, so installing and running an anti-virus will be helpful no matter
+what. The one installed will depend on the OS.
+
+\subsubsection{Linux}
+\textbf{clamav} will be used to find infected files on the system.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo apt-get install clamav
+sudo freshclam
+\end{lstlisting}
+
+The pair of commands will install the latest version of \textbf{clamav} as well as
+update all virus definitions.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+clamscan -r --move=/somewhere / &
+\end{lstlisting}
+
+This command will scan the entire machine, moving any malicious files to a folder
+called \textbf{/somewhere}. The \textbf{\&} is there to run the command in the 
+background, but this can be accomplished with \textbf{tmux} or any other known way.
+
+\subsubsection{Windows}
+Sophos
+
+
+\section{Check cron jobs}
+Cron jobs are scheduled "jobs" or commands fo rthe server to run automatically at
+a specified time and date. Malware or the redteam may attempt to use these for
+persistence mechanisms so clearing them is very important.
+
+To check the cron jobs of a specific user, use:
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+crontab -l <user>
+\end{lstlisting}
+
+To clear any suspicious cron jobs, use:
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+crontab -r <user>
+\end{lstlisting}
+
+\section{Checking for Suspicious Programs}
+Some of the boxes may already be infected and have malicious processes running.
+To view a list of processes use:
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+ps -eo pid,tty,user,args | less # List all process with the following format
+\end{lstlisting}
+
+As a rule of thumb, programs should only be running in \textbf{/bin},
+\textbf{/opt}, \textbf{/sbin}, \textbf{/usr}.
+
+\section{Setup NTP}
+NTP stands for Network Time Protocol and runs on port 123. It is used to synchronize computers on a network to UTC time within a few miliseconds. This should not be necessary during CCDC unless there is an inject requiring it, or there is extra time. Keeping similar times on each 
+machine will help with logging and is good practice to have done.
+
+\subsection{Creating NTP Server}
+Choose one of the Linux machines to operate as the NTP server. This machine will be the one
+acting as the lowest stratum to the rest of the computers. Run the following commands.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo apt-get install ntp
+\end{lstlisting}
+
+Use the package manager that is on the machine. Next edit \textbf{/etc/ntp.conf}. Make sure the following lines are present. They restrict access to clients. Replace the addresses in {} with the actual subnet of the network given to us. Make sure to delete the brackets.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+restrict default kod nomodify notrap nopeer noquery
+restrict -6 default kod nomodify notrap nopeer noquery
+restrict {OUR.NET.WOR.K} mask {255.255.255.0} nomodify notrap
+\end{lstlisting}
+
+The next lines will use the systems clock in case Internet access is lost.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+server  127.127.1.0 # local clock
+fudge   127.127.1.0 stratum 10
+\end{lstlisting}
+
+Start the service. The NTP server is ready for clients to be configured.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo service ntp restart
+\end{lstlisting}
+
+
+\subsection{Configuring Clients}
+The rest of the computers must be configured to use the correct NTP server.
+
+\subsubsection{Windows}
+Here is windows
+
+\subsubsection{Linux}
+All other machines will act as NTP clients. Use the correct package manager for your system.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo apt-get install ntp
+\end{lstlisting}
+
+Edit the \textbf{/etc/ntp.conf} file to add the NTP server to the machine. This line will be added near the top of the file above where the other servers are declared.
+
+\begin{lstlisting}[language=bash]
+# Only add the line directly below me
+server NTP.SER.VER.IP prefer
+server 0.debian.whatever iburst # this is already there
+\end{lstlisting}
+
+The next two commands will restart the NTP service, and then list all NTP servers the client sees.
+
+\begin{lstlisting}[language=bash]
+#!/bin/bash
+sudo service ntp restart
+ntpq -p
+\end{lstlisting}
+
+
+\section{Looking at Logs}
+Look at em
+
+\section{Using Mitnik}
+Mitnik is the Discord bot that helps out during the competition. He can be used to generate passwords and assist in generating Incident reports. Use \textbf{?help} to access his help menu.
+
+\subsection{?genpass}
+This command will return a new password consisting of a symbol, three words, followed by a number between 00 and 99. 
+
+\subsection{?incident}
+This is the command to use to create, edit and list different incidents.
+
+\subsubsection{Create}
+Create an incident from scratch.
+
+\begin{lstlisting}[language=bash]
+?incident -n
+\end{lstlisting}
+
+This will begin an interface with the bot to create a new incident. Follow the prompts on screen while being as descriptive as possible. Everything typed goes straight into the official report, so make it detailed enough to make sense to someone somewhat familiar with the network. 
+
+\subsubsection{List}
+List all or a single incident.
+
+\begin{lstlisting}[language=bash]
+?incident -l {NUM}
+\end{lstlisting}
+
+Leaving out a specific incident number will list all incidents and their included data. This should be used before editing incidents so the incident number can be found. When run with a number, the command will return only the specified incident.
+
+\subsubsection{Edit}
+Edit an already created incident.
+
+\begin{lstlisting}[language=bash]
+?incident -e {NUM}
+\end{lstlisting}
+
+Will edit the specified incident. To find an incidents number, use the list command. Follow the prompts from Mitnik to edit attributes of the incident.s
+
+
+\section{Sources}
+\begin{enumerate}
+    \item Initial: \url{http://www.cs.mercer.edu/courses/David%20Cozart/IST%20301/Cyber%20Defense%20Spring%202017/Hardening%20Directives/LinuxGeneralDocumentation-Adams.pdf} 
+   	\item NTP:
+   	\url{https://www.thegeekstuff.com/2014/06/linux-ntp-server-client/}
+\end{enumerate}
+
+
+\end{document}
