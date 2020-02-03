@@ -20,6 +20,111 @@
 
 \pagebreak 
 
+\part{SOP}
+
+\section{Standard Operating Procedures}
+A Cyber Defense Competition is won by working together, working quickly, and working
+smartly to keep the dirty Red Team from keeping us down. Our goal is simple, keep the
+given services online and accessible. To achieve this goal we can imagine the competition as
+a game, with the pregame and game time. Pregame is everything up to the day of the competition,
+while the game is that nice long 8 hour period of being the nail for a very large hammer.
+
+During the Pregame we typically have some information about the systems we will be using. Whether
+it's the services that are running on them, or the operating systems and their versions, any information
+is good information that can be used to make an attack plan. 
+
+The Game is everything else. The team has to use their prior knowledge and skills to lock down
+the system and make sure they stay up. They also have to be monitoring the systems for intrusions, and creating reports when anything fishy is found.
+
+The goal of this document is to provide a set of procedures for most scenarios that would
+occur during the pregame and the game. There will be instructions on what needs to be done
+in each phase.
+
+\section{Pregame}
+\textit{In an ideal world, the Pregame would happen before the Game so we have time to view the environment before actually competing. When we cannot pregame, we must remove the CVE checks and most of the port scans until later in the competition after we have secured the network.}
+
+\subsection{Assess}
+\begin{enumerate}
+	\item Run port scans
+	\item Write down all machines and their OS versions
+	\item Get process list from each machine
+	\item Check contents of \textbackslash temp
+	\begin{enumerate}
+		\item Should be empty, make note of anything in here.
+	\end{enumerate}
+	\item Check contents of \textbackslash bin
+	\begin{enumerate}
+		\item Are there any files that look weird?
+	\end{enumerate}
+	\item Check contents of home folders
+	\item Write down all users on the machine and what groups they are in
+	\item If there is time/is possible, download clamav and run it
+	\begin{enumerate}
+		\item This will alert us to files that have been tampered with
+	\end{enumerate}
+	\item Check .bashrc for startup scripts or weird things
+\end{enumerate}
+
+\subsection{Research}
+\begin{enumerate}
+	\item Check OS versions on cvedetails.com
+	\begin{enumerate}
+		\item Make note of anything with a rating of 7 or higher
+		\item These may not all be useful, but some will
+	\end{enumerate}
+	\item Do the same with software running on the machine
+	\item See if processes running on the machine should be there
+	\begin{enumerate}
+		\item ex) Apache probably should not be running on a DNS server
+	\end{enumerate}
+	\item Make a list of ports that should be open on the machine
+	\begin{enumerate}
+		\item If it is a web server, then 80, 443, 53, 22 should be open at least, shut down the rest
+	\end{enumerate}
+\end{enumerate}
+
+\subsection{Plan}
+\begin{enumerate}
+	\item Using all the gathered information, make a game pan for each machine that will happen during the first hour plan
+	\item Add programs/processes that should be stopped
+	\item Add files that should be deleted
+	\item List users that should be investigated
+\end{enumerate}
+
+\section{Game}
+\textit{This includes the first hour plan. After the first hour, operations will be cyclical and individual to each person and their machine.}
+
+\subsection{First Hour}
+\begin{enumerate}
+	\item If we are allowed to, take a snapshot of the machine
+	\item Update the machine
+	\begin{enumerate}
+		\item This will indicate if the repos are fine. It is also good practive to check the repos to make sure they are legitimate
+	\end{enumerate}
+	\item Create a new user and give it sudo access
+	\item Disable the root account
+	\item Check for other suspicious accounts and disable them
+	\begin{enumerate}
+		\item We disable instead of deleting just in case they need to be there
+	\end{enumerate}
+	\item Check sudoers group for rogue users
+	\item Check for suspicious files in directories
+	\item Update the local firewall to what you need
+	\item Check for cron jobs
+	\item Implement the plan for this machine based on the Pregame
+	\begin{enumerate}
+		\item If there was no pregame, and there is still time in the first hour, do what should have been done in the pregame and gather as much info as you can.
+	\end{enumerate}
+\end{enumerate}
+
+\subsection{Secure}
+Stop all intrusions
+
+\subsection{Fix}
+
+\subsection{Monitor}
+
+\part{Tools}
 \section{Setup Up Package Repository}
 The majority of the linux boxes you will be faced with will not have the proper
 package repositories to collect packages. Whether it be a Debian, Ubuntu, or
@@ -314,6 +419,12 @@ ntpq -p
 
 \section{Looking at Logs}
 Look at em
+
+\section{Different Attack Vectors}
+
+\subsection{Bad Binaries}
+There is always the chance that a binary on your machine can be compromised. At the 2019 CANSEC, our team went up against a network that had tons of bad commands. One machine had the ls binary replaced with the sl binary. This was found through trying to use ls. A different less conspicuous change was passwd, which would change the password, but also open a shell.
+The only way to check the validity of these commands is to use a tool like rkhunter, which will check the hash of the binary against known good binaries. Typically this should not be seen often, but if something is acting fishy be sure to check.
 
 \section{Using Mitnik}
 Mitnik is the Discord bot that helps out during the competition. He can be used to generate passwords and assist in generating Incident reports. Use \textbf{?help} to access his help menu.
