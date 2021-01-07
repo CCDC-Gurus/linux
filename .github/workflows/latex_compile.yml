@@ -1,19 +1,19 @@
 
 name: LaTeX compilation
-
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches: [ master ]
+jobs:
+  compile-latex:
+    runs-on: windows-latest
+    steps:
+    - name: LaTeX compilation
+      # You may pin to the exact commit or the version.
+      # uses: dante-ev/latex-action@259e5ff953ad4d4616fbd09cc87a526ee5c4499a
+      uses: dante-ev/latex-action@v0.2.0
+      with:
+        # The root LaTeX file to be compiled
+        root_file: latex.tex
+        # LaTeX engine to be used
+        compiler: pdflatex
 
-# You may pin to the exact commit or the version.
-# uses: dante-ev/latex-action@259e5ff953ad4d4616fbd09cc87a526ee5c4499a
-uses: dante-ev/latex-action@v0.2.0
-with:
-  # The root LaTeX file to be compiled
-  root_file: linux.tex
-  # LaTeX engine to be used
-  compiler: pdflatex
-  # Extra arguments to be passed to the latex compiler
-  # args: # optional, default is -pdf -latexoption=-file-line-error -latexoption=-interaction=nonstopmode
