@@ -13,7 +13,7 @@ jobs:
         uses: dante-ev/latex-action@v0.2.0
         with:
           # The root LaTeX file to be compiled
-          root_file: latex.tex
+          root_file: linux.tex
           # LaTeX engine to be used
           compiler: pdflatex
 
